@@ -1,0 +1,242 @@
+# Advanced Algorithms Project - Group 2
+
+KANIAN Nicolas -
+MASSON Louison - 
+CANPOLAT Guluzar - 
+NABADJA Richard
+
+- [Advanced Algorithms Project - Group 2](#advanced-algorithms-project---group-2)
+  - [Introduction 🚚](#introduction-)
+  - [Data and Variables](#data-and-variables)
+  - [Constraints](#constraints)
+    - [1. All customers are visited exactly once](#1-all-customers-are-visited-exactly-once)
+    - [2. Trucks leave a node as often as they enter](#2-trucks-leave-a-node-as-often-as-they-enter)
+    - [3. Truck capacity constraint](#3-truck-capacity-constraint)
+    - [4. All trucks leave the warehouse](#4-all-trucks-leave-the-warehouse)
+    - [5. Deliveries must be made during the delivery time window](#5-deliveries-must-be-made-during-the-delivery-time-window)
+    - [6. Fitness function (Objective)](#6-fitness-function-objective)
+- [Computational Complexity of VRPTW](#computational-complexity-of-vrptw)
+  - [VRPTW is in NP](#vrptw-is-in-np)
+    - [What is a certificate?](#what-is-a-certificate)
+    - [Verification Process](#verification-process)
+  - [VRPTW is NP-Complete](#vrptw-is-np-complete)
+    - [**TSP is NP-Complete**](#tsp-is-np-complete)
+        - [*Example of Cities graph*](#example-of-cities-graph)
+      - [Optimization Problem](#optimization-problem)
+      - [Decisional Problem](#decisional-problem)
+      - [Demonstration that TSP problem is NP](#demonstration-that-tsp-problem-is-np)
+    - [Mapping TSP to VRPTW](#mapping-tsp-to-vrptw)
+      - [Quick Comparison Table](#quick-comparison-table)
+    - [Conclusion](#conclusion)
+
+
+## Introduction 🚚
+In the Vehicle Routing Problem with Time Windows (VRPTW), a set number of customers have to be delivered to by a set amount of delivery trucks.
+
+The VRPTW is and extension of the Traveling Salesman Problem (TSP) with multiple entities (trucks) making deliveries at the same time instead of only one salesman. Furthermore, additional restrictions such as delivery time windows or truck capacity are often imposed.
+
+In our project we choose these restrictions:
+
+- Vehicle Capacity Constraints: Each vehicle has a maximum capacity, and the sum of the demands of the customers served on the same route must not exceed this capacity.
+- Service Time Windows: Each customer has a specific time window during which they must be served. This imposes a restriction on the vehicle’s arrival: it must arrive at the customer within this time frame. If it arrives before the window opens, it must wait; if it arrives after, the route is invalid.
+- Return to Warehouse Constraint: Each route must start and end at the central warehouse, and each vehicle must complete a single trip starting from the warehouse and return once its route is finished.
+- Single Visit per Customer: Each customer must be visited exactly once by a vehicle (within the framework of the classic VRPTW).
+
+To simplify, we consider that the travel time from (*i*) to (*j*) equals the distance between (*i*) and (*j*).
+
+The objective is to minimize the number of routes and the total time/distance traveled by the trucks.
+
+## Data and Variables
+
+- V: Set of nodes in the graph (customers + warehouse)
+- E: Set of edges in the graph (routes between nodes); we consider a complete graph
+- w(*i*, *j*): Cost associated with each edge (distance between node *i* and node *j*)
+- o(*i*): Opening time of the time window for customer *i*
+- e(*i*): Closing time of the time window for customer *i*
+- D(*i*): Demand of customer *i* (number of parcels to deliver)
+- s(*i*): Service duration at customer *i* (time spent delivering parcels on site)
+- p: Number of available vehicles
+- Q<sub>k</sub>: Maximum capacity of vehicle k
+- t<sub>ik</sub>: Arrival time at customer *i* by vehicle k
+
+## Constraints
+
+### 1. All customers are visited exactly once
+
+Each customer must be served exactly once by the fleet of vehicles. No customer is skipped or visited multiple times.
+
+$$
+\sum_{i=1}^{n} \sum_{k=1}^{p} x_{ijk} = 1 \quad \forall j \in \{2, \ldots, n\}
+$$
+
+---
+
+### 2. Trucks leave a node as often as they enter
+
+For each vehicle and each customer, the number of times the vehicle arrives at the customer equals the number of times it leaves, preventing vehicles from getting stuck.
+
+$$
+\sum_{i=1}^{n} x_{ijk} = \sum_{l=1}^{n} x_{jlk} \quad \forall j \in \{2, \ldots, n\}, \forall k \in \{1, \ldots, p\}
+$$
+
+---
+
+### 3. Truck capacity constraint
+
+The total demand of customers served by a vehicle must not exceed its capacity Q<sub>k</sub>.
+
+$$
+\sum_{j=1}^{n} \sum_{i=1}^{n} x_{ijk} d_j \leq Q_k \quad \forall k \in \{1, \ldots, p\}
+$$
+
+---
+
+### 4. All trucks leave the warehouse
+
+Each vehicle must start its route from the warehouse (node 1) and leave it exactly once.
+
+$$
+\sum_{j=2}^{n} x_{1jk} = 1 \quad \forall k \in \{1, \ldots, p\}
+$$
+
+---
+
+### 5. Deliveries must be made during the delivery time window
+
+Deliveries must be made within the customer's allowed time window. If the vehicle arrives before the window opens, it must wait. Deliveries occur within the time window o(*i*), e(*i*). The big \( M \) disables the constraint if the route is unused.
+
+$$
+t_{ik} + s_i + w(i, j) - M \times (1 - x_{ijk}) \leq t_{jk} \quad \forall i, j, k
+$$
+
+$$
+o(i) \leq t_{ik} \leq e(i) \quad \forall i, k
+$$
+
+---
+
+### 6. Fitness function (Objective)
+
+The objective is to minimize the total distance traveled by all vehicles during their routes, i.e., to make the logistics as efficient as possible in terms of mileage.
+
+$$
+\min \sum_{k=1}^{p} \sum_{i=1}^{n} \sum_{j=1}^{n} w(i, j) x_{ijk}
+$$
+
+# Computational Complexity of VRPTW
+
+## VRPTW is in NP
+
+To show that the Vehicle Routing Problem with Time Windows (VRPTW) is in NP, we check if a proposed solution can be verified in polynomial time.
+
+### What is a certificate?
+A certificate (solution) for VRPTW consists of a set of routes, one for each vehicle, where each route is an ordered list of nodes:
+> **Example:**  
+> Route: 1 → 2 → 3 → 4 → 1  
+> (Node 1 is the warehouse; 2, 3, and 4 are customers)
+
+### Verification Process
+
+- **Capacity Check:**  
+  For each route, sum the demands of all customers and verify that the total does not exceed the vehicle's capacity Q<sub>k</sub>.
+
+- **Customer Visit Check:**  
+  Ensure every customer appears exactly once across all routes. This is done by traversing all routes and marking visited nodes.  
+  *Complexity:* proportional to the total number of customers |V|.
+
+- **Cost and Time Calculations:**  
+  For each route, compute the total travel time, waiting time, and service time by summing over all consecutive node pairs (edges). Verify that all arrival times respect the customers’ time windows o(*i*),e(*i*).  
+  *Complexity:* proportional to the number of edges traversed |E|.
+
+All these checks can be carried out in polynomial time with respect to input size (\( O(|V|) \), \( O(|E|) \)), so **VRPTW is in NP**.
+
+---
+
+## VRPTW is NP-Complete
+
+To show VRPTW is NP-complete, we construct a polynomial-time reduction from the Traveling Salesman Problem (TSP):
+
+### **TSP is NP-Complete**
+
+**Cities graph** characteristics:  
+- Complete  
+- N cities  
+- Weights
+
+##### *Example of Cities graph*  
+<img src="img/basePB_CitiesGraph.png" width="600" /><br>  
+*INFO: To simplify the problem we worked with complete graphs, but in real life the graph should be incomplete.*
+
+---
+
+#### Optimization Problem
+
+**Data** : G = Cities graph  
+**Problem** : What is the shortest route that passes at least once through each vertex of G?
+
+To find if a list S is a potential solution to our problem, we need to try all the possibilities. The algorithm used to find if the solution is correct or not has an O(n!) complexity. So, this problem can't be an NP-complete problem. In reality, it's an NP-HARD problem.
+
+That's why we change the problem to a decisional problem to simplify the future algorithms.
+
+---
+
+#### Decisional Problem
+
+**Data** : G = Cities graph | K = The cost of the trajectory (total weights)  
+**Problem** : Is there a route that passes at least once through each vertex of G and whose sum of edge weights is at most K?
+
+#### Demonstration that TSP problem is NP
+
+<img src="img/BasePB_road.png" width="600" /><br>
+
+If we have a solution to the problem:  
+**S = [Paris, Lille, Marseille, Strasbourg]** and **K = 1900**
+
+To verify whether **S** is a valid solution to our problem, we need to check two conditions:
+
+- The **sum of the edges** in the path **S** must be **smaller than or equal to K**:  
+
+   $$
+   \sum_{(v_i, v_{i+1}) \in S} \text{dist}(v_i, v_{i+1}) \le K
+   $$
+
+   This can be verified in **O(n)** time by traversing the list once.
+
+- Each **vertex of the graph** must appear **exactly once** in **S** (no repetition and no omission).  
+   This can also be verified in **O(n)** time.
+
+
+In this example:
+
+- **sum = 1850**, which is smaller than **K = 1900**,  
+- all the cities in the graph appear in **S**.
+
+Therefore, **S** is a valid solution.  
+We verified this in **polynomial time O(n)**.
+
+### Mapping TSP to VRPTW
+Given a TSP, build a VRPTW instance as follows:
+- Set number of vehicles to 1.
+- Set the vehicle capacity Q<sub>k</sub> so large a single trip can serve all customers.
+- Assign demand 1 to each customer.
+- Use any node as the warehouse.
+- Set service time of all customers to zero.
+- Set time windows to [0, ∞] for all customers (no restriction).
+
+This shows TSP is a special case of VRPTW, so VRPTW is at least as hard as TSP.
+
+#### Quick Comparison Table
+
+| TSP                    | VRPTW (Vehicle Routing Problem w/ Time Windows)   |
+|------------------------|---------------------------------------------------|
+| One traveller          | Several vehicles                                  |
+| Single unlimited trip  | Truck capacity (may require multiple trips)       |
+| No time restrictions   | Time window constraints for deliveries            |
+| No capacity restrictions| All trucks have set capacity                     |
+
+---
+
+### Conclusion
+
+Because VRPTW is in NP and a known NP-complete problem (TSP) reduces to it, **the VRPTW is NP-complete**.
+
