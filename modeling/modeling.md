@@ -25,6 +25,7 @@ NABADJA Richard
       - [Optimization Problem](#optimization-problem)
       - [Decisional Problem](#decisional-problem)
       - [Demonstration that TSP problem is NP](#demonstration-that-tsp-problem-is-np)
+      - [Demonstration that the TSP Problem is NP-Hard](#demonstration-that-the-tsp-problem-is-np-hard)
     - [Mapping TSP to VRPTW](#mapping-tsp-to-vrptw)
       - [Quick Comparison Table](#quick-comparison-table)
     - [Conclusion](#conclusion)
@@ -213,6 +214,26 @@ In this example:
 
 Therefore, **S** is a valid solution.  
 We verified this in **polynomial time O(n)**.
+
+#### Demonstration that the TSP Problem is NP-Hard
+
+To do this, we need to **reduce an NP-Complete problem** to a TSP problem. We take the **Hamiltonian cycle**  
+
+<img src="img/hamiltonian_cycle.png" width="600" /> -->
+<img src="img/hamiltonianToTSP.png" width="600" /><br>
+
+In the first graph we have a solution which is: *S = [Paris, Lille, Strasbourg, Marseille]*.  
+We want to transform it into a TSP problem with **the same solution**.  
+
+
+In the second graph, we keep the same solution as before. To transform the previous graph into this one, we need to:  
+- Traverse the graph, and if the edge exists, add a weight of 1. O(n²)  
+- Traverse the graph, and if the edge does not exist, add an edge with a weight of 2. O(n²)  
+
+We performed this transformation in **polynomial time** (O(n²)). Therefore, we can say that TSP is an NP-Hard problem.  
+
+To conclude, we proved that the TSP is in NP and is also NP-Hard. **Therefore, TSP is an NP-Complete problem.**
+
 
 ### Mapping TSP to VRPTW
 Given a TSP, build a VRPTW instance as follows:
