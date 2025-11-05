@@ -59,7 +59,7 @@ These constraints can be divided into two categories:
 
 Other constraints can be addressed, if this is justified by an industrial application (not necessarily resulting from the current context).
 
-## 🧰 Required Python Libraries
+## Required Python Libraries
 
 To implement and test the Vehicle Routing Problem (VRP) algorithms, the following Python libraries are required.
 
@@ -79,3 +79,4 @@ Install the core dependencies:
 
 ```bash
 pip install numpy pandas matplotlib networkx vrplib pulp
+
