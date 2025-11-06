@@ -72,6 +72,7 @@ To implement and test the Vehicle Routing Problem (VRP) algorithms, the followin
 | **networkx** | Graph representation and manipulation |
 | **vrplib** | Import of benchmark VRP and VRPTW instances (e.g., Solomon datasets) |
 | **PuLP** | Linear programming solver used for optimization |
+| **scipy** |  |
 
 ### Installation
 
