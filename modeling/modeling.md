@@ -261,3 +261,96 @@ This shows TSP is a special case of VRPTW, so VRPTW is at least as hard as TSP.
 
 Because VRPTW is in NP and a known NP-complete problem (TSP) reduces to it, **the VRPTW is NP-complete**.
 
+# Best Approach to Solve VRPTW
+
+## Algorithmic Design
+
+### 1. Exact Algorithms
+
+**Common Exact Algorithms:**
+
+- **Branch-and-Bound / Branch-and-Cut**  
+  Widely used for integer programming, these techniques explore feasible solutions and prune the search tree when constraints aren't met.  
+  They work well on small to moderately-sized VRPTW instances (typically fewer than 100 cities).
+
+- **Dynamic Programming (DP)**  
+  Useful for handling time windows and sequencing constraints by breaking the problem into subproblems.  
+  DP suffers from exponential complexity and is typically only suitable for very small instances.
+
+- **Mixed-Integer Linear Programming (MILP)**  
+  Formulating VRPTW as an MILP can be solved exactly using solvers like **Gurobi** or **CPLEX**.  
+  MILP approaches provide exact solutions, but computational cost scales quickly with problem size.
+
+> **Limitation:** Exact algorithms are only practical for small or moderate-sized instances.  
+> For larger problems, their computational costs are prohibitive.
+
+---
+
+### 2. Heuristic Methods
+
+**Common Heuristic Algorithms:**
+
+- **Savings Algorithm (Clarke-Wright)**  
+  Merges routes using a savings calculation, adaptable to VRPTW by incorporating time windows.
+
+- **Insertion Heuristics**  
+  Sequentially inserts customers, checking time window feasibility and selecting the least-cost option.
+
+- **Sweep Algorithm**  
+  Sorts customers by angular position from the depot and builds routes; often paired with local search for refinement.
+
+- **Local Search Techniques (2-opt, 3-opt)**  
+  Rearranges edges for better routes, with VRPTW adaptation to ensure time window compliance during swaps or reorderings.
+
+> **Advantages:** Heuristics are fast and suitable for larger VRPTW instances.  
+> They produce good-quality feasible solutions, but optimality is not guaranteed.
+
+---
+
+### 3. Metaheuristic Algorithms
+
+**Common Metaheuristic Algorithms:**
+
+- **Simulated Annealing (SA)**  
+  Gradually lowers acceptance of worse solutions, customized for VRPTW to handle time window and vehicle constraints.
+
+- **Genetic Algorithms (GA)**  
+  Uses crossover, mutation, and selection to evolve a population of solutions, incorporating feasibility during operations.
+
+- **Ant Colony Optimization (ACO)**  
+  Builds solutions probabilistically with pheromone updating, adapting the process for VRPTW constraints.
+
+- **Tabu Search**  
+  Maintains a tabu list to avoid recently explored solutions and accept temporarily infeasible moves to improve exploration.
+
+> **Advantages:** Metaheuristics are effective on large and complex VRPTW instances.  
+> They escape local optima, balance solution quality and performance, and are popular in practice.
+
+---
+
+### 4. Hybrid Approaches
+
+**Examples of Hybrid Strategies:**
+
+- **Metaheuristic + Local Search:**  
+  Combining, for example, genetic algorithms with local search (2-opt, 3-opt) to improve final solutions.
+
+- **Exact Methods + Heuristics:**  
+  Using heuristics to generate initial solutions refined by exact algorithms when possible.
+
+- **Decomposition Approaches:**  
+  Divide VRPTW into subproblems (clustering nodes), solve with heuristics, and refine using exact methods if scalable.
+
+---
+
+### Choosing by Instance Size
+
+| Instance Size | Recommended Approach              |
+|----------------|----------------------------------|
+| **Small (10–50)** | Exact Algorithms                |
+| **Medium (50–200)** | Heuristic or Metaheuristic     |
+| **Large (>200)** | Metaheuristic or Hybrid Approaches |
+
+---
+
+## Our experimental approach (ANT Algorithm) :
