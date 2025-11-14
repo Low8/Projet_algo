@@ -1,6 +1,13 @@
 ﻿# Algorithms and Combinatorial Optimization Project
 
 ---
+## Important
+
+You can find:
+- **PART 1 : Modeling**: *modeling/modeling.md*
+- **PART 2 : Implementation**: *scrypts/implementation.ipynb*
+- **PART 3 : Experimental study**: *Algo_benchmark_analys-Group_2.pdf*
+
 
 ## Introduction
 
