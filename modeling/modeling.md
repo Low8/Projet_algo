@@ -360,5 +360,99 @@ Because VRPTW is in NP and a known NP-complete problem (TSP) reduces to it, **th
 | **Large (>200)** | Metaheuristic or Hybrid Approaches |
 
 ---
+# Experimental Approach
 
-## Our experimental approach (ANT Algorithm) :
+
+### Initial Idea — Ant Colony Optimization (ACO)
+
+In the early stages of the project, we explored a **metaheuristic Ant Colony Optimization (ACO)** algorithm to solve the *Vehicle Routing Problem with Time Windows (VRPTW)*.  
+This bio-inspired approach mimics the foraging behavior of real ants, where **pheromone trails** guide artificial agents (ants/drivers) toward promising delivery routes.
+
+Although ACO is powerful and flexible, its **computational complexity** and **parameter tuning requirements** made large-scale experimentation more challenging for our context.  
+Therefore, we decided to **switch to a more classical and efficient hybrid heuristic** approach based on **Clarke & Wright**, **Tabu Search**, and **Variable Neighborhood Search (VNS)**.
+
+---
+
+## Final Approach — Clarke & Wright + Tabu Search + VNS
+
+Our final solution relies on a **multi-step optimization process** combining **constructive heuristics** and **local/global search metaheuristics**.  
+This approach provides an excellent balance between **solution quality**, **simplicity**, and **computational efficiency** for medium and large instances.
+
+---
+
+### 🔹 1 Clarke & Wright Savings Algorithm
+
+**Purpose:** Construct an initial feasible solution (set of delivery routes).
+
+**Principle:**  
+The Clarke & Wright algorithm starts with each customer being served by a separate vehicle, then iteratively merges routes based on *savings* in travel distance.  
+The *saving* between two customers *i* and *j* is computed as:
+
+`S_ij = d_i0 + d_0j - d_ij`
+
+where `(d_{i0})` and `(d_{0j})` are distances from the depot to each customer, and `(d_{ij})` is the distance between them.
+
+**Goal:**  
+Maximize total savings while respecting vehicle capacity and feasibility constraints.  
+The result serves as a **good starting point** for further optimization.
+
+---
+
+### 🔹 2 Tabu Search (TS)
+
+**Purpose:** Improve an existing solution by exploring its neighborhood intelligently.
+
+**Principle:**  
+Tabu Search is a **metaheuristic** that iteratively moves from one solution to another in its *neighborhood* (e.g., small modifications like relocating or swapping deliveries), even if the move temporarily worsens the objective.  
+A **tabu list** records recent moves to **avoid cycling** and encourage exploration.
+
+**Use in our project:**  
+- Applied after Clarke & Wright to refine routes.  
+- Helps escape local minima and reach better global configurations.  
+
+**Main advantages:**  
+- Simple but powerful local improvement method.  
+- Good balance between intensification and diversification.
+
+---
+
+### 🔹 3 Variable Neighborhood Search (VNS)
+
+**Purpose:** Perform both **local and global search** to diversify the solution space and avoid stagnation.
+
+**Principle:**  
+VNS systematically changes the neighborhood structure during the search process.  
+In our implementation:
+
+- **Local search operators:**
+  - `Relocate`: Move a customer from one route to another.
+  - `Or-Opt`: Move a small sequence of consecutive customers to another position in the same or a different route.
+
+- **Global search operators:**
+  - `Inter-Swap`: Exchange customers between different routes.
+  - `Two-Opt*`: Optimize the order of customers within a “giant tour” by reversing sub-segments.
+
+**Goal:**  
+Alternate between different neighborhood types to **intensify (local improvement)** and **diversify (global exploration)** the search.  
+
+---
+
+### 🔹 4 Summary of the Final Strategy
+
+| Step | Method | Purpose | Type |
+|------|---------|----------|------|
+| 1 | **Clarke & Wright** | Construct an initial feasible set of routes | Constructive heuristic |
+| 2 | **Tabu Search** | Refine and escape local minima | Local metaheuristic |
+| 3 | **VNS (Relocate, Or-Opt, 2-Opt, Inter-Swap)** | Explore larger neighborhoods for diversification | Global metaheuristic |
+
+---
+
+### 🔹 5 Key Advantages of Our Final Approach
+
+- **Efficient and scalable** for large VRP instances.  
+- **Simple implementation** compared to ACO or other metaheuristics.  
+- **Combines exploration and exploitation** through structured hybridization.  
+- Provides **feasible routes** under realistic constraints
+
+
+
