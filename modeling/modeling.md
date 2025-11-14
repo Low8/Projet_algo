@@ -36,7 +36,14 @@ NABADJA Richard
     - [3. Metaheuristic Algorithms](#3-metaheuristic-algorithms)
     - [4. Hybrid Approaches](#4-hybrid-approaches)
     - [Choosing by Instance Size](#choosing-by-instance-size)
-  - [Our experimental approach (ANT Algorithm) :](#our-experimental-approach-ant-algorithm-)
+- [Experimental Approach](#experimental-approach)
+    - [Initial Idea — Ant Colony Optimization (ACO)](#initial-idea--ant-colony-optimization-aco)
+  - [Final Approach — Clarke \& Wright + Tabu Search + VNS](#final-approach--clarke--wright--tabu-search--vns)
+    - [🔹 1 Clarke \& Wright Savings Algorithm](#-1-clarke--wright-savings-algorithm)
+    - [🔹 2 Tabu Search (TS)](#-2-tabu-search-ts)
+    - [🔹 3 Variable Neighborhood Search (VNS)](#-3-variable-neighborhood-search-vns)
+    - [🔹 4 Summary of the Final Strategy](#-4-summary-of-the-final-strategy)
+    - [🔹 5 Key Advantages of Our Final Approach](#-5-key-advantages-of-our-final-approach)
 
 
 ## Introduction 🚚
@@ -382,58 +389,101 @@ This approach provides an excellent balance between **solution quality**, **simp
 
 ### 🔹 1 Clarke & Wright Savings Algorithm
 
-**Purpose:** Construct an initial feasible solution (set of delivery routes).
+Purpose: Build a strong initial set of routes that already respects capacity and time-window feasibility as much as possible.
 
-**Principle:**  
-The Clarke & Wright algorithm starts with each customer being served by a separate vehicle, then iteratively merges routes based on *savings* in travel distance.  
-The *saving* between two customers *i* and *j* is computed as:
+Principle:
+Start with one route per customer (depot → i → depot), then iteratively merge two routes when doing so reduces the traveled distance. The saving when placing customers i and j consecutively is
 
-`S_ij = d_i0 + d_0j - d_ij`
+$$ S_{ij} = d_{i0} + d_{0j} - d_{ij} $$
 
-where `(d_{i0})` and `(d_{0j})` are distances from the depot to each customer, and `(d_{ij})` is the distance between them.
+where $d_{i0}$ and $d_{0j}$ are distances from the depot (node 0) to customers i, j and $d_{ij}$ is the direct distance between i and j.
 
-**Goal:**  
-Maximize total savings while respecting vehicle capacity and feasibility constraints.  
-The result serves as a **good starting point** for further optimization.
+Practical procedure (as used in our code via `clark_and_wright(instance)`):
+1. Initialization: create |V|-1 single-customer routes. Compute all $S_{ij}$ and sort in descending order.
+2. Candidate merge: consider a pair (i, j) only if i is at the end of its route and j is at the start (or vice‑versa). This preserves route contiguity.
+3. Feasibility filter: accept a merge iff
+  - Capacity after merge does not exceed Q, and
+  - Time-window propagation along the merged route remains feasible (early arrivals lead to waiting, late arrivals are rejected at this stage when possible).
+4. Apply merge and repeat while savings remain positive and feasibility holds.
+
+Outcome:
+This produces a compact initial solution with good structure for local improvement. We use it as the starting point for Tabu Search.
 
 ---
 
 ### 🔹 2 Tabu Search (TS)
 
-**Purpose:** Improve an existing solution by exploring its neighborhood intelligently.
+Purpose: Refine the Clarke & Wright solution by exploring local and global neighborhoods while preventing cycles.
 
-**Principle:**  
-Tabu Search is a **metaheuristic** that iteratively moves from one solution to another in its *neighborhood* (e.g., small modifications like relocating or swapping deliveries), even if the move temporarily worsens the objective.  
-A **tabu list** records recent moves to **avoid cycling** and encourage exploration.
+Search mechanics based on our implementation (`tabu_search`):
+- Representation: a solution S is a list of routes (each route excludes the depot; depot legs are implicit).
+- Neighborhood generation: for each iteration, generate `nb_neighbors` candidates using a mix of moves (see VNS section). We bias the selection with an exploration ratio to balance local vs global changes.
+- Tabu mechanism: we store a bounded FIFO list (size = `tabu_size`) of solution hashes (sorted tuple of routes). A candidate is forbidden if its hash is tabu, unless it satisfies the aspiration criterion below.
+- Aspiration criterion: allow a tabu candidate if it strictly improves the global best evaluation value.
+- Termination: stop after `iter_max` iterations without improvement or when no admissible neighbor exists.
 
-**Use in our project:**  
-- Applied after Clarke & Wright to refine routes.  
-- Helps escape local minima and reach better global configurations.  
+Penalized evaluation (objective to minimize):
+We do not discard all infeasible candidates. Instead, we minimize a penalized objective that smoothly guides the search toward feasibility and lower distance:
 
-**Main advantages:**  
-- Simple but powerful local improvement method.  
-- Good balance between intensification and diversification.
+$$
+f(S) = \text{dist}(S) + \alpha\,\text{capViol}(S) + \beta\,\text{timeViol}(S)
+$$
+
+with the following definitions aligned with our code (`evaluate`):
+- dist(S): total travel distance over all routes (including depot departures/returns).
+- capViol(S): sum over routes of $\max\{0,\ \text{load}(r) - Q\}$.
+- timeViol(S): cumulative lateness beyond time-window upper bounds along each route (waiting for early arrival is allowed and not penalized; lateness is counted, including return to depot).
+
+The coefficients $\alpha$ and $\beta$ weight violations (variables `ALPHA`, `BETA` in the notebook). Larger values discourage infeasible moves more aggressively. The search always selects the neighbor with the smallest $f(S)$ among admissible candidates; the global best is updated when $f$ improves.
+
+Practical settings (from our experiments):
+- `tabu_size ≈ ⌊√n⌋`, `nb_neighbors` in the hundreds, a small `exploration_ratio` (e.g., 1/10–1/30) to occasionally try large moves, and a patience counter `iter_max` for no‑improvement iterations.
+
+What this achieves:
+- Intensification via local moves (fine adjustments inside/among routes).
+- Diversification via occasional global moves and the tabu list that avoids immediate cycling.
 
 ---
 
 ### 🔹 3 Variable Neighborhood Search (VNS)
 
-**Purpose:** Perform both **local and global search** to diversify the solution space and avoid stagnation.
+Purpose: Provide a portfolio of complementary moves and change neighborhoods systematically to escape local minima.
 
-**Principle:**  
-VNS systematically changes the neighborhood structure during the search process.  
-In our implementation:
+We use the following operators (all are reflected in our code and the `neighborhood` generator):
 
-- **Local search operators:**
-  - `Relocate`: Move a customer from one route to another.
-  - `Or-Opt`: Move a small sequence of consecutive customers to another position in the same or a different route.
+Local moves (intensification):
+- Relocate (code: `relocate`)
+  - Action: pick a customer from a source route and insert it in a target route, near one of its geometric neighbors from a precomputed candidate list (`instance.candidate_list`). If the neighbor is present, insert just before/after it; otherwise use a reasonable position.
+  - Effect: fine-grained load/time tuning across routes; empties routes are removed.
+  - Complexity: O(|route|) for insert/erase; evaluation uses our penalized objective.
 
-- **Global search operators:**
-  - `Inter-Swap`: Exchange customers between different routes.
-  - `Two-Opt*`: Optimize the order of customers within a “giant tour” by reversing sub-segments.
+- Or‑Opt (code: `or_opt`)
+  - Action: select a consecutive sequence of length 1–3 within a route and reinsert it either in another position of the same route or into another route.
+  - Effect: short block moves that can repair small time-window violations or reduce distance more effectively than single-node relocate.
+  - Complexity: O(|route|) structural change; feasibility guided by penalties, not hard rejection.
 
-**Goal:**  
-Alternate between different neighborhood types to **intensify (local improvement)** and **diversify (global exploration)** the search.  
+- Intra‑swap (code: `intra_swap`)
+  - Action: swap two customers within the same route, prioritizing pairs that are close in the candidate list when possible.
+  - Effect: local reorder to shorten edges and adjust arrival times without changing route membership.
+
+- 2‑Opt (intra‑route, code: `two_opt`)
+  - Action: reverse a segment [i..j] inside one route.
+  - Effect: classical TSP improvement that reduces crossings and smooths sequences; interacts well with time windows via our evaluation function.
+
+Global moves (diversification):
+- Inter‑swap (code: `inter_swap`)
+  - Action: swap one customer from route A with one from route B, biased by the candidate list of geometric neighbors across routes.
+  - Effect: larger reallocation step that can rebalance capacity and timing across vehicles.
+
+- Giant‑tour swap + split (code: `giant_tour_swap`)
+  - Action: merge current routes into a giant tour, swap two positions in that tour, then re‑split into routes using the instance parameters.
+  - Effect: explores macro‑reorderings beyond single‑route edits; helpful to escape deep local minima.
+
+Neighborhood scheduling:
+- We generate `nb_neighbors` candidates per iteration with a split between local (exploitation) and global (exploration) moves controlled by `exploration_ratio`. This is a lightweight VNS scheme embedded in Tabu Search: the neighborhood structure effectively changes over time through randomized operator selection and differing move scales.
+
+Selection rule:
+- Among admissible neighbors (respecting tabu and aspiration), we pick the one with the best penalized evaluation $f(S)$ defined in the Tabu section above. This unifies distance and constraint handling and keeps the goal as a single minimization target.
 
 ---
 
