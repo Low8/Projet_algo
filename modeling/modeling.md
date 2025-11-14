@@ -29,6 +29,14 @@ NABADJA Richard
     - [Mapping TSP to VRPTW](#mapping-tsp-to-vrptw)
       - [Quick Comparison Table](#quick-comparison-table)
     - [Conclusion](#conclusion)
+- [Best Approach to Solve VRPTW](#best-approach-to-solve-vrptw)
+  - [Algorithmic Design](#algorithmic-design)
+    - [1. Exact Algorithms](#1-exact-algorithms)
+    - [2. Heuristic Methods](#2-heuristic-methods)
+    - [3. Metaheuristic Algorithms](#3-metaheuristic-algorithms)
+    - [4. Hybrid Approaches](#4-hybrid-approaches)
+    - [Choosing by Instance Size](#choosing-by-instance-size)
+  - [Our experimental approach (ANT Algorithm) :](#our-experimental-approach-ant-algorithm-)
 
 
 ## Introduction 🚚
